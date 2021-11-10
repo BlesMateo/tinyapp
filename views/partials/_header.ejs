@@ -12,11 +12,12 @@
             </div>
           </div>
           <div class= "ml-auto">
-            <% if(username){ %>
+            <% if(user){ %>
               <form class="form-inline" action="/logout" method="POST">
                 <div class="form-group mb-2">
-                  <h5><%= username %></h5>
-                  <button type="submit" class="btn btn-primary" style="margin-left: 1em;">logout</button>
+                  <h4>Logged In As:<%= user.email %>
+                  </h4>
+                  <button type="submit" class="btn btn-primary" style="margin-left: 1em;">Logout</button>
                 </div>
               </form>
               <% } else { %>

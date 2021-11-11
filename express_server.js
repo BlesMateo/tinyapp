@@ -27,6 +27,15 @@ const users = {
   }
 }
 
+const searchUserEmail = (email) => {
+  for(let user in users) {
+    if(users[user].email === email){
+      return users[user].id;
+    }
+  }
+  return null;
+}
+
 function generateRandomString(length) {
   const numsandLetters = "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
   randomString = "";
@@ -112,18 +121,23 @@ app.get("/register", (req, res) => {
 });
 
 app.post("/register", (req, res) => {
-  const user = {
-  id: generateRandomString(6),
-  email: req.body.email,
-  password: req.body.password
-  };
-  if (user["email"] === "" || user["password" === ""]) {
-    res.status(400).send("Invalid username/password");
-  }
+const userEmail = req.body.email;
+const userPass = req.body.password;
 
+  if (!userEmail || !userPass) {
+    res.status(400).send("Invalid username/password");
+  } else if (searchUserEmail(userEmail)){
+    res.sendStatus(400).send("This email address is already being used")
+  } else {
+  const user = {
+    id: generateRandomString(6),
+    email: req.body.email,
+    password: req.body.password
+  };
   users[user.id] = user
   res.cookie["user", user];
   res.redirect("/urls")
+  }
 });
 
 app.get("/hello", (req, res) => {

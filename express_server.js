@@ -105,6 +105,12 @@ app.post('/urls/:shortURL', (req, res)=> {
   res.redirect('/urls');
 });
 
+app.get('/login', (req, res) => {
+  const templateVars = {user: req.cookies["user"]};
+  res.render("urls_login", templateVars)
+});
+
+
 app.post("/login", (req, res) => {
   res.cookie("user", req.body.user);
   res.redirect("/urls");

@@ -21,13 +21,13 @@
                 </div>
               </form>
               <% } else { %>
-                <form class="form-inline" action="/login" method="POST" style="margin-left: 0em;">
-                  <div class="form-group mb-2">
-                    <input class="form-control mr-sm-2" type="text" name="username" placeholder="username" style="width: 300px; margin-left: 1em">
-                    <button type="submit" class="btn btn-primary">login</button>
+                <div class="collapse navbar-collapse justify-content-end" id="navbarNavAltMarkup">
+                  <div class="navbar-nav">
+                    <a class="nav-item nav-link" href="/login" style="margin: 1em">Login</a>
+                    <a class="nav-item nav-link" href="/register" style="margin: 1em">Register</a>
                   </div>
-                </form>
-                <% } %>
+                </div>
+              <% } %>
            </div>
       </nav>
     </form>

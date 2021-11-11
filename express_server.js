@@ -27,7 +27,7 @@ const users = {
   }
 }
 
-const searchUserEmail = (email) => {
+const getUserByEmail= (email) => {
   for(let user in users) {
     if(users[user].email === email){
       return users[user].id;
@@ -36,7 +36,8 @@ const searchUserEmail = (email) => {
   return null;
 }
 
-function generateRandomString(length) {
+
+const generateRandomString = (length) => {
   const numsandLetters = "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
   randomString = "";
   for (let a = 0; a < length; a =  a + 1) {
@@ -57,16 +58,17 @@ app.get("/urls.json", (req, res) => {
 app.get("/urls", (req, res) => {
   const templateVars = {
   urls: urlDatabase,
-  user: req.cookies["user"]
+  user_id: req.cookies["user_id"],
+  users
   };
   res.render("urls_index", templateVars);
 });
 
 app.get("/urls/new", (req, res) => {
   const templateVars = {
-    shortURL: req.params.shortURL,
-    longURL: urlDatabase[req.params.shortURL],
-    user: req.cookies["user"]
+    urls: urlDatabase,
+    user_id: req.cookies["user_id"],
+    users
   };
   res.render("urls_new", templateVars);
 });
@@ -75,7 +77,8 @@ app.get("/urls/:shortURL", (req, res) => {
   const templateVars = {
   shortURL: req.params.shortURL,
   longURL: urlDatabase[req.params.shortURL],
-  user: req.cookies["user"]
+  user_id: req.cookies["user_id"],
+  users
   };
   res.render("urls_show", templateVars);
 });
@@ -106,23 +109,41 @@ app.post('/urls/:shortURL', (req, res)=> {
 });
 
 app.get('/login', (req, res) => {
-  const templateVars = {user: req.cookies["user"]};
+  const templateVars = {
+  user_id: req.cookies["user_id"]},
+  users
   res.render("urls_login", templateVars)
 });
 
 
 app.post("/login", (req, res) => {
-  res.cookie("user", req.body.user);
-  res.redirect("/urls");
-  })
+    const inputEmail = req.body.email;
+    const inputPass = req.body.password; // retrieve password from database object users (users[user].password)
+
+      if (!inputEmail || !inputPass) {
+        return res.status(403).send(" The email entered is not valid");
+      } else if (getUserByEmail(inputEmail, users)) {
+        const user = getUserByMail(inputEmail, users);
+        if(inputPassword !== users[user].password) {
+          return res.status(403).send("The password entered is not valid");
+        } else {
+          res.cookie["user", user];
+          res.redirect("/urls")
+        }
+        } else {
+        return res.status(400).send("The email provided cannot be found, please enter a valid email")
+      }
+    });
 
 app.post("/logout", (req, res) => {
-  res.clearCookie('user', req.body.user);
+  res.clearCookie('user_id', req.cookies["user_id"]);
   res.redirect("/urls");
-  });
+});
 
 app.get("/register", (req, res) => {
-  const templateVars = {user: req.cookies["user"]};
+  const templateVars = {
+    user_id: req.cookies["user_id"]},
+    users
   res.render("urls_register", templateVars)
 });
 
@@ -132,7 +153,7 @@ const userPass = req.body.password;
 
   if (!userEmail || !userPass) {
     res.status(400).send("Invalid username/password");
-  } else if (searchUserEmail(userEmail)){
+  } else if (getUserByEmail(userEmail)){
     res.sendStatus(400).send("This email address is already being used")
   } else {
   const user = {

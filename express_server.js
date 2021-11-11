@@ -66,10 +66,13 @@ app.get("/urls", (req, res) => {
 
 app.get("/urls/new", (req, res) => {
   const templateVars = {
-    urls: urlDatabase,
+    email: getUserByEmail(req.cookies["user_id"]),
     user_id: req.cookies["user_id"],
     users
   };
+  if(!req.cookies["user_id"]) {
+    res.redirect("/login");
+  }
   res.render("urls_new", templateVars);
 });
 

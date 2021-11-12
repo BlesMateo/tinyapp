@@ -3,7 +3,6 @@ const express = require("express");
 const cookiesession = require("cookie-session")
 const bodyParser = require("body-parser");
 const morgan = require("morgan");
-const express = require("express");
 const bcrypt = require("bcryptjs");
 const app = express();
 const PORT = 8080; // default port 8080
@@ -11,11 +10,10 @@ const PORT = 8080; // default port 8080
 
 app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({extended: true}));
-app.use(cookieParser());
 app.use(morgan("dev"));
 app.use(cookiesession({
   name: "session",
-  keys: "Ihavenoideaifright"
+  keys: ["INoFeelSoGood"]
 }));
 
 const urlDatabase = {
@@ -49,21 +47,13 @@ const users = {
 
 }
 
-const getUserByEmail= (email, database) => {
-  // for(let user in users) {
-  //   if(users[user].email === email){
-  //     return users[user]; // return true
-  //   }
-  // }
-  // return null; // return false
-  console.log("get user by email was called")
+const getUserByEmail = (email, database) => {
   for (const user in database) {
     if (database[user].email === email) {
-      console.log("user", user)
+      //console.log("user", user)
       return user;
     }
   }
-  console.log("false")
   return false;
 }
 
@@ -81,8 +71,7 @@ const urlsForUser = (id) => {
   return userURLs
 }
 
-const generateRandomString =
- (length) => {
+const generateRandomString = (length) => {
   const numsandLetters = "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
   randomString = "";
   for (let a = 0; a < length; a =  a + 1) {
@@ -92,172 +81,190 @@ const generateRandomString =
 }
 //console.log(generateRandomString(6));
 
-app.get("/", (req, res) => {
-  res.send("Hello!");
-});
-
-app.get("/urls.json", (req, res) => {
-  res.json(urlDatabase);
-});
-
-app.get("/urls", (req, res) => {
-  if (!req.cookies["user_id"]){
-    return res.status(401).send("Please <a href='/login'>login</a> first to continue")
+app.get("/", (require, response) => {
+  const userID = require.session.user_id;
+  if(userID) {
+    return response.redirect("/urls");
   }
-  const shortURL = urlsForUser(req.cookies["user_id"])
+  return response.redirect("/login");
+});
+
+app.get("/urls.json", (require, response) => {
+  response.json(urlDatabase);
+});
+
+app.get("/urls", (require, response) => {
+  const userID = require.session.user_id;
+  if (!userID){
+    return response.status(401).send("Please <a href='/login'>login</a> first to continue")
+  }
+  const shortURL = urlsForUser(userID)
+
   const templateVars = {
     urls: shortURL,
-    user_id: req.cookies["user_id"],
+    user_id: userID,
     users
   };
-  res.render("urls_index", templateVars);
+  response.render("urls_index", templateVars);
 });
 
-app.get("/urls/new", (req, res) => {
+app.get("/urls/new", (require, response) => {
+  const userID = require.session.user_id;
   const templateVars = {
-    email: getUserByEmail(req.cookies["user_id"]),
-    user_id: req.cookies["user_id"],
+    email: getUserByEmail(userID),
+    user_id: userID,
     users
   };
-  if(!req.cookies["user_id"]) {
-    res.redirect("/login");
+  if(!userID) {
+    return response.redirect("/login");
   }
-  res.render("urls_new", templateVars);
+  response.render("urls_new", templateVars);
 });
 
-app.get("/urls/:shortURL", (req, res) => {
+app.get("/urls/:shortURL", (require, response) => {
+  const userID = require.session.user_id;
   const templateVars = {
-  shortURL: req.params.shortURL,
-  longURL: urlDatabase[req.params.shortURL].longURL,
-  user_id: req.cookies["user_id"],
-  users
+    shortURL: require.params.shortURL,
+    longURL: urlDatabase[require.params.shortURL].longURL,
+    user_id: userID,
+    users
   };
-  res.render("urls_show", templateVars);
+  response.render("urls_show", templateVars);
 });
 
-app.post("/urls", (req, res) => {
-  const longURL = req.body.longURL;
+app.post("/urls", (require, response) => {
+  const userID = require.session.user_id;
+  const longURL = require.body.longURL;
   const shortURL = generateRandomString(6);
-  console.log(longURL)
   urlDatabase[shortURL] = {
     longURL,
-    userID: req.cookies["user_id"]
+    userID: userID
   };
   console.log("urlDatabase:", urlDatabase)
-  res.redirect(`/urls/${shortURL}`);
+  response.redirect(`/urls/${shortURL}`);
 });
 
-app.get("/u/:shortURL", (req, res) => {
-  const urlObject = urlDatabase[req.params.shortURL]
+app.get("/u/:shortURL", (require, response) => {
+  const urlObject = urlDatabase[require.params.shortURL]
   const longURL = urlObject ? urlObject.longURL : null //if object exists return longURL else return null
   console.log(longURL)
     if(!longURL){
-    return res.status(404).send("URL cannot be found")
+    return response.status(404).send("URL cannot be found")
   }
-  res.redirect(longURL);
+  response.redirect(longURL);
 });
 
-app.post('/urls/:shortURL/delete', (req, res) => {
-  if(!req.cookies["user_id"]){
-    return res.status(401).send("Please <a href='/login'>login</a> first to continue")
+app.post('/urls/:shortURL/delete', (require, response) => {
+  const userID = require.session.user_id
+  if(!userID){
+    return response.status(401).send("Please <a href='/login'>login</a> first to continue")
   }
-  const shortURL = req.params.shortURL;
-  const userURLs = urlsForUser(req.cookies["user_id"])
+  const shortURL = require.params.shortURL;
+  const userURLs = urlsForUser(userID)
     if (shortURL in userURLs){
       delete urlDatabase[shortURL];
-      res.redirect("/urls");
+      response.redirect("/urls");
   } else {
-  return res.status(401).send("Unable to access, user is not authorized")
+  return response.status(401).send("Unable to access, user is not authorized")
   }
 });
 
-app.post('/urls/:shortURL', (req, res) => {
-  if(!req.cookies["user_id"]){
-    return res.status(401).send("Please <a href='/login'>login</a> first to continue")
+app.post('/urls/:shortURL', (require, response) => {
+  const userID = require.session.user_id;
+  if(!userID) {
+    return response.status(401).send("Please <a href='/login'>login</a> first to continue")
   }
-  const longURL = req.body.longURL;
-  const shortURL = req.params.shortURL;
-  const userURLs = urlsForUser(req.cookies["user_id"])
+  const longURL = require.body.longURL;
+  const shortURL = require.params.shortURL;
+  const userURLs = urlsForUser(userID)
 
   if (shortURL in userURLs){
     console.log(longURL)
     // const longURL = req.body.longURL;
     urlDatabase[shortURL] = {
       longURL,
-      user_id: req.cookies["user_id"]
+      userID: userID
     };
-    res.redirect("/urls")
+    response.redirect("/urls")
   }
 });
 
-app.get('/login', (req, res) => {
-  const templateVars = {users, user_id: userID}
-    if (userID) {
-      return res.redirect("/urls");
-    }
-    return res.render("login", templateVars);
+app.get('/login', (require, response) => {
+  const userID = require.session.user_id;
+  if(userID) {
+    response.redirect("/urls");
+
+  }
+  const templateVars = {
+    user_id: userID,
+    users
+  }
+  response.render("urls_login", templateVars);
 });
 
 
-app.post("/login", (req, res) => {
-    const email = req.body.email;
-    const password = req.body.password; // retrieve password from database object users (users[user].password)
+app.post("/login", (require, response) => {
+    const email = require.body.email;
+    const password = require.body.password; // retrieve password from database object users (users[user].password)
 
     if (!email) {
-      return res.status(403).send("The email entered is invalid");
+      return response.status(403).send("The email entered is invalid");
     } else if (getUserByEmail(email, users)) {
       const userID = getUserByEmail(email, users);
       const user = users[userID]
 
     if (!bcrypt.compareSync(password, user.password)) {
-      return res.status(403).send("The password entered is invalid");
+      return response.status(403).send("The password entered is invalid");
     } else {
-      res.cookie("user_id", userID);
-      res.redirect("/urls");
+      require.session.user_id = userID;
+      response.redirect("/urls");
     }
     } else {
-      return res.status(400).send("Invalid email")
+      return response.status(400).send("Invalid email")
     }
   });
 
-app.post("/logout", (req, res) => {
-  res.clearCookie('user_id', req.cookies["user_id"]);
-  res.redirect("/urls");
+app.post("/logout", (require, response) => {
+  require.session = null;
+  response.redirect("/urls");
 });
 
-app.get("/register", (req, res) => {
+app.get("/register", (require, response) => {
+  const userID = require.session.user_id;
+  if(userID) {
+    response.redirect("/urls")
+  }
   const templateVars = {
-    user_id: req.cookies["user_id"],
+    user_id: userID,
     users
   }
-  res.render("urls_register", templateVars)
+  response.render("urls_register", templateVars)
 });
 
-app.post("/register", (req, res) => {
-const userEmail = req.body.email;
-const userPass = req.body.password;
+app.post("/register", (require, response) => {
+const userEmail = require.body.email;
+const userPass = require.body.password;
 const id = generateRandomString(6);
 const hashPass = bcrypt.hashSync(userPass,10)
 
   if (!userEmail || !userPass) {
-    res.status(400).send("Invalid username/password");
+    response.status(400).send("Invalid username/password");
   } else if (getUserByEmail(userEmail, users)){
-    res.status(403).send("This email address is already being used");
+    response.status(403).send("This email address is already being used");
   } else {
   const user = {
     id: generateRandomString(6),
-    email: req.body.email,
+    email: require.body.email,
     password: hashPass
   };
   users[user.id] = user
-  console.log(user.password)
-  res.cookie("user_id", user.id);
-  res.redirect("/urls")
+  require.session.user_id = user.id;
+  response.redirect("/urls")
   }
 });
 
-app.get("/hello", (req, res) => {
-  res.send("<html><body>Hello <b>World</b></body></html>\n");
+app.get("/hello", (require, response) => {
+  response.send("<html><body>Hello <b>World</b></body></html>\n");
 });
 
 

@@ -1,7 +1,8 @@
 const express = require("express");
 const cookieParser = require("cookie-parser")
 const bodyParser = require("body-parser");
-const morgan = require("morgan")
+const morgan = require("morgan");
+const e = require("express");
 const app = express();
 const PORT = 8080; // default port 8080
 //const userid length = 6;
@@ -28,26 +29,46 @@ const users = {
   "userRandomID": {
     id: "userRandomID",
     email: "user@example.com",
-    password: "purple-monkey-dinosaur"
+    password: "123"
   },
  "user2RandomID": {
     id: "user2RandomID",
     email: "user2@example.com",
     password: "dishwasher-funk"
-  }
+ },
+ "aJ48lW": {
+  id: "aJ48lW",
+  email: "user3@example.com",
+  password: "kerfuffle-35"
+ },
+
 }
 
 const getUserByEmail= (email) => {
   for(let user in users) {
     if(users[user].email === email){
-      return users[user].id;
+      return users[user]; // return true
     }
   }
-  return null;
+  return null; // return false
 }
 
+const urlsForUser = (id) => {
+  const userURLs = {};
+  if(!id) {
+    return null;
+  }
 
-const generateRandomString = (length) => {
+  for(const key in urlDatabase){
+    if(urlDatabase[key].userID === id) {
+      userURLs[key] = urlDatabase[key]
+    }
+  }
+  return userURLs
+}
+
+const generateRandomString =
+ (length) => {
   const numsandLetters = "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
   randomString = "";
   for (let a = 0; a < length; a =  a + 1) {
@@ -66,10 +87,15 @@ app.get("/urls.json", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
+  if (!req.cookies["user_id"]){
+    return res.status(401).send("Please <a href='/login'>login</a first to continue")
+  }
+  const shortURL = urlsForUser(req.cookies["user_id"])
+  console.log(shortURL)
   const templateVars = {
-  urls: urlDatabase,
-  user_id: req.cookies["user_id"],
-  users
+    urls: shortURL,
+    user_id: req.cookies["user_id"],
+    users
   };
   res.render("urls_index", templateVars);
 });
@@ -99,9 +125,10 @@ app.get("/urls/:shortURL", (req, res) => {
 app.post("/urls", (req, res) => {
   const longURL = req.body.longURL;
   const shortURL = generateRandomString(6);
+  console.log(longURL)
   urlDatabase[shortURL] = {
     longURL,
-    user_id: req.cookies["user_id"]
+    userID: req.cookies["user_id"]
   };
   console.log("urlDatabase:", urlDatabase)
   res.redirect(`/urls/${shortURL}`);
@@ -111,26 +138,43 @@ app.get("/u/:shortURL", (req, res) => {
   const urlObject = urlDatabase[req.params.shortURL]
   const longURL = urlObject ? urlObject.longURL : null //if object exists return longURL else return null
   console.log(longURL)
-  if(!longURL){
+    if(!longURL){
     return res.status(404).send("URL cannot be found")
   }
   res.redirect(longURL);
 });
 
 app.post('/urls/:shortURL/delete', (req, res) => {
-  const shortURL = req.params.shortURL
-  delete urlDatabase[shortURL];
-  res.redirect("/urls");
+  if(!res.cookie["user_id"]){
+    return res.state(401).send("Please <a href='/login'>login</a first to continue")
+  }
+  const shortURL = req.params.shortURL;
+  const userURLs = urlsForUser(req.cookies["user_id"])
+    if (shortURL in userURLs){
+      delete urlDatabase[shortURL];
+      res.redirect("/urls");
+  } else {
+  return res.status(401).send("Unable to access, user is not authorized")
+  }
 });
 
 app.post('/urls/:shortURL', (req, res) => {
-  const shortURL = req.params.shortURL;
+  if(!res.cookie["user_id"]){
+    return res.state(401).send("Please <a href='/login'>login</a first to continue")
+  }
   const longURL = req.body.longURL;
-  urlDatabase[shortURL] = {
-    longURL,
-    user_id: req.cookies["user_id"]
-  };
-  res.redirect('/urls');
+  const shortURL = req.params.shortURL;
+  const userURLs = urlsForUser(req.cookies["user_id"])
+
+  if (shortURL in userURLs){
+    console.log(longURL)
+    // const longURL = req.body.longURL;
+    urlDatabase[shortURL] = {
+      longURL,
+      user_id: req.cookies["user_id"]
+    };
+    res.redirect("/urls")
+  }
 });
 
 app.get('/login', (req, res) => {
@@ -145,19 +189,22 @@ app.get('/login', (req, res) => {
 app.post("/login", (req, res) => {
     const inputEmail = req.body.email;
     const inputPass = req.body.password; // retrieve password from database object users (users[user].password)
+    console.log(req.body)
 
-      if (!inputEmail || !inputPass) {
-        return res.status(403).send(" The email entered is not valid");
-      } else if (getUserByEmail(inputEmail, users)) {
-        const user = getUserByMail(inputEmail, users);
-        if(inputPassword !== users[user].password) {
-          return res.status(403).send("The password entered is not valid");
-        } else {
-          res.cookie["user", user];
+      if(getUserByEmail(inputEmail)) {
+        const user = getUserByEmail(inputEmail);
+        console.log(inputEmail)
+        if(inputPass === user.password) {
+          console.log(inputPass)
+          res.cookie("user_id", user.id);
+          console.log("user_id", user.id)
           res.redirect("/urls")
-        }
         } else {
-        return res.status(400).send("The email provided cannot be found, please enter a valid email")
+          return res.status(403).send("The password entered is not valid");
+        }
+      }
+      else {
+       return res.status(403).send(" The email entered is not valid");
       }
     });
 

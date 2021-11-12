@@ -1,8 +1,9 @@
 const express = require("express");
-const cookieParser = require("cookie-parser")
+// const cookieParser = require("cookie-parser")
+const cookiesession = require("cookie-session")
 const bodyParser = require("body-parser");
 const morgan = require("morgan");
-const e = require("express");
+const express = require("express");
 const bcrypt = require("bcryptjs");
 const app = express();
 const PORT = 8080; // default port 8080
@@ -11,8 +12,11 @@ const PORT = 8080; // default port 8080
 app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(cookieParser());
-app.use(morgan("dev"))
-
+app.use(morgan("dev"));
+app.use(cookiesession({
+  name: "session",
+  keys: "Ihavenoideaifright"
+}));
 
 const urlDatabase = {
   "b2xVn2":  {
@@ -187,11 +191,11 @@ app.post('/urls/:shortURL', (req, res) => {
 });
 
 app.get('/login', (req, res) => {
-  const templateVars = {
-    user_id: req.cookies["user_id"],
-    users
-  }
-  res.render("urls_login", templateVars)
+  const templateVars = {users, user_id: userID}
+    if (userID) {
+      return res.redirect("/urls");
+    }
+    return res.render("login", templateVars);
 });
 
 

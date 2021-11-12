@@ -3,6 +3,7 @@ const cookieParser = require("cookie-parser")
 const bodyParser = require("body-parser");
 const morgan = require("morgan");
 const e = require("express");
+const bcrypt = require("bcryptjs");
 const app = express();
 const PORT = 8080; // default port 8080
 //const userid length = 6;
@@ -29,7 +30,7 @@ const users = {
   "userRandomID": {
     id: "userRandomID",
     email: "user@example.com",
-    password: "123"
+    password: "1234"
   },
  "user2RandomID": {
     id: "user2RandomID",
@@ -44,13 +45,22 @@ const users = {
 
 }
 
-const getUserByEmail= (email) => {
-  for(let user in users) {
-    if(users[user].email === email){
-      return users[user]; // return true
+const getUserByEmail= (email, database) => {
+  // for(let user in users) {
+  //   if(users[user].email === email){
+  //     return users[user]; // return true
+  //   }
+  // }
+  // return null; // return false
+  console.log("get user by email was called")
+  for (const user in database) {
+    if (database[user].email === email) {
+      console.log("user", user)
+      return user;
     }
   }
-  return null; // return false
+  console.log("false")
+  return false;
 }
 
 const urlsForUser = (id) => {
@@ -88,10 +98,9 @@ app.get("/urls.json", (req, res) => {
 
 app.get("/urls", (req, res) => {
   if (!req.cookies["user_id"]){
-    return res.status(401).send("Please <a href='/login'>login</a first to continue")
+    return res.status(401).send("Please <a href='/login'>login</a> first to continue")
   }
   const shortURL = urlsForUser(req.cookies["user_id"])
-  console.log(shortURL)
   const templateVars = {
     urls: shortURL,
     user_id: req.cookies["user_id"],
@@ -145,8 +154,8 @@ app.get("/u/:shortURL", (req, res) => {
 });
 
 app.post('/urls/:shortURL/delete', (req, res) => {
-  if(!res.cookie["user_id"]){
-    return res.state(401).send("Please <a href='/login'>login</a first to continue")
+  if(!req.cookies["user_id"]){
+    return res.status(401).send("Please <a href='/login'>login</a> first to continue")
   }
   const shortURL = req.params.shortURL;
   const userURLs = urlsForUser(req.cookies["user_id"])
@@ -159,8 +168,8 @@ app.post('/urls/:shortURL/delete', (req, res) => {
 });
 
 app.post('/urls/:shortURL', (req, res) => {
-  if(!res.cookie["user_id"]){
-    return res.state(401).send("Please <a href='/login'>login</a first to continue")
+  if(!req.cookies["user_id"]){
+    return res.status(401).send("Please <a href='/login'>login</a> first to continue")
   }
   const longURL = req.body.longURL;
   const shortURL = req.params.shortURL;
@@ -187,26 +196,25 @@ app.get('/login', (req, res) => {
 
 
 app.post("/login", (req, res) => {
-    const inputEmail = req.body.email;
-    const inputPass = req.body.password; // retrieve password from database object users (users[user].password)
-    console.log(req.body)
+    const email = req.body.email;
+    const password = req.body.password; // retrieve password from database object users (users[user].password)
 
-      if(getUserByEmail(inputEmail)) {
-        const user = getUserByEmail(inputEmail);
-        console.log(inputEmail)
-        if(inputPass === user.password) {
-          console.log(inputPass)
-          res.cookie("user_id", user.id);
-          console.log("user_id", user.id)
-          res.redirect("/urls")
-        } else {
-          return res.status(403).send("The password entered is not valid");
-        }
-      }
-      else {
-       return res.status(403).send(" The email entered is not valid");
-      }
-    });
+    if (!email) {
+      return res.status(403).send("The email entered is invalid");
+    } else if (getUserByEmail(email, users)) {
+      const userID = getUserByEmail(email, users);
+      const user = users[userID]
+
+    if (!bcrypt.compareSync(password, user.password)) {
+      return res.status(403).send("The password entered is invalid");
+    } else {
+      res.cookie("user_id", userID);
+      res.redirect("/urls");
+    }
+    } else {
+      return res.status(400).send("Invalid email")
+    }
+  });
 
 app.post("/logout", (req, res) => {
   res.clearCookie('user_id', req.cookies["user_id"]);
@@ -224,19 +232,22 @@ app.get("/register", (req, res) => {
 app.post("/register", (req, res) => {
 const userEmail = req.body.email;
 const userPass = req.body.password;
+const id = generateRandomString(6);
+const hashPass = bcrypt.hashSync(userPass,10)
 
   if (!userEmail || !userPass) {
     res.status(400).send("Invalid username/password");
-  } else if (getUserByEmail(userEmail)){
-    res.sendStatus(400).send("This email address is already being used")
+  } else if (getUserByEmail(userEmail, users)){
+    res.status(403).send("This email address is already being used");
   } else {
   const user = {
     id: generateRandomString(6),
     email: req.body.email,
-    password: req.body.password
+    password: hashPass
   };
   users[user.id] = user
-  res.cookie["user", user];
+  console.log(user.password)
+  res.cookie("user_id", user.id);
   res.redirect("/urls")
   }
 });

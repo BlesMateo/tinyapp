@@ -4,6 +4,7 @@ const cookiesession = require("cookie-session")
 const bodyParser = require("body-parser");
 const morgan = require("morgan");
 const bcrypt = require("bcryptjs");
+const { getUserByEmail, urlsForUser } = require("./helper");
 const app = express();
 const PORT = 8080; // default port 8080
 //const userid length = 6;
@@ -47,29 +48,7 @@ const users = {
 
 }
 
-const getUserByEmail = (email, database) => {
-  for (const user in database) {
-    if (database[user].email === email) {
-      //console.log("user", user)
-      return user;
-    }
-  }
-  return false;
-}
 
-const urlsForUser = (id) => {
-  const userURLs = {};
-  if(!id) {
-    return null;
-  }
-
-  for(const key in urlDatabase){
-    if(urlDatabase[key].userID === id) {
-      userURLs[key] = urlDatabase[key]
-    }
-  }
-  return userURLs
-}
 
 const generateRandomString = (length) => {
   const numsandLetters = "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"

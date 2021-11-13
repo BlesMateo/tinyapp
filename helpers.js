@@ -1,12 +1,15 @@
+/* <----- Function that determines if the email is registered in the database  ----> */
+
 const getUserByEmail = (email, database) => {
   for (const user in database) {
     if (database[user].email === email) {
-      //console.log("user", user)
       return user;
     }
   }
   return undefined;
+
 }
+/* <------------- Function that returns the users created URL's  -----------> */
 
 const urlsForUser = (id, urlDatabase) => {
   const userURLs = {};
@@ -20,7 +23,9 @@ const urlsForUser = (id, urlDatabase) => {
     }
   }
   return userURLs;
+
 }
+/* <------------- Function that generates a random alphanumerical string -----------> */
 
 const generateRandomString = (length) => {
   const numsandLetters = "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"

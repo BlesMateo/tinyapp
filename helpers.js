@@ -21,4 +21,14 @@ const urlsForUser = (id, urlDatabase) => {
   }
   return userURLs;
 }
-module.exports = { getUserByEmail, urlsForUser };
+
+const generateRandomString = (length) => {
+  const numsandLetters = "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+  randomString = "";
+  for (let a = 0; a < length; a =  a + 1) {
+    randomString += numsandLetters.charAt(Math.floor(Math.random() * numsandLetters.length))
+  }
+  return randomString;
+}
+
+module.exports = { getUserByEmail, urlsForUser, generateRandomString };

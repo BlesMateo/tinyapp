@@ -1,13 +1,12 @@
 const express = require("express");
-// const cookieParser = require("cookie-parser")
 const cookiesession = require("cookie-session")
 const bodyParser = require("body-parser");
 const morgan = require("morgan");
 const bcrypt = require("bcryptjs");
-const { getUserByEmail, urlsForUser } = require("./helpers");
+const { getUserByEmail, urlsForUser, generateRandomString} = require("./helpers");
 const app = express();
 const PORT = 8080; // default port 8080
-//const userid length = 6;
+
 
 app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({extended: true}));
@@ -49,16 +48,15 @@ const users = {
 }
 
 
+/* <--------------------- Updated and hashed passwords for users in database ---------------------> */
 
-const generateRandomString = (length) => {
-  const numsandLetters = "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-  randomString = "";
-  for (let a = 0; a < length; a =  a + 1) {
-    randomString += numsandLetters.charAt(Math.floor(Math.random() * numsandLetters.length))
-  }
-  return randomString;
-}
-//console.log(generateRandomString(6));
+users["userRandomID"].password = bcrypt.hashSync("1234",10)
+users["user2RandomID"].password = bcrypt.hashSync("dishwasher-funk",10)
+users["aJ48lW"].password = bcrypt.hashSync("kerfuffle-35",10)
+
+
+/* <---------------------------------------  Get Routes  -----------------------------------------> */
+
 
 app.get("/", (require, response) => {
   const userID = require.session.user_id;
@@ -68,9 +66,10 @@ app.get("/", (require, response) => {
   return response.redirect("/login");
 });
 
+// Sends the user to an existing longURL through a shortURL link
 app.get("/u/:shortURL", (require, response) => {
   const urlObject = urlDatabase[require.params.shortURL]
-  const longURL = urlObject ? urlObject.longURL : null //if object exists return longURL else return null
+  const longURL = urlObject ? urlObject.longURL : null
     if(!longURL){
     return response.status(404).send("URL cannot be found")
   }
@@ -81,9 +80,10 @@ app.get("/urls.json", (require, response) => {
   response.json(urlDatabase);
 });
 
+// Users can see both existing longURL's and shortURL's
 app.get("/urls", (require, response) => {
   const userID = require.session.user_id;
-  if (!userID){
+    if (!userID){
     return response.status(401).send("Please <a href='/login'>login</a> first to continue")
   }
   const shortURL = urlsForUser(userID, urlDatabase)
@@ -96,6 +96,7 @@ app.get("/urls", (require, response) => {
   response.render("urls_index", templateVars);
 });
 
+// Redirects a logged in client to a new page to create a new URL
 app.get("/urls/new", (require, response) => {
   const userID = require.session.user_id;
   const templateVars = {
@@ -109,6 +110,7 @@ app.get("/urls/new", (require, response) => {
   response.render("urls_new", templateVars);
 });
 
+// Enables users to see shortURL's using provided longURL's
 app.get("/urls/:shortURL", (require, response) => {
   const userID = require.session.user_id;
   const templateVars = {
@@ -120,6 +122,21 @@ app.get("/urls/:shortURL", (require, response) => {
   response.render("urls_show", templateVars);
 });
 
+// Enables users to see the registration page and create a new account
+app.get("/register", (require, response) => {
+  const userID = require.session.user_id;
+  console.log(userID)
+  if(userID) {
+    return response.redirect("/urls")
+  }
+  const templateVars = {
+    user_id: userID,
+    users
+  }
+  response.render("urls_register", templateVars)
+});
+
+// Enables users to view the login page and sign in an existing account
 app.get('/login', (require, response) => {
   const userID = require.session.user_id;
   if(userID) {
@@ -132,7 +149,9 @@ app.get('/login', (require, response) => {
   }
   response.render("urls_login", templateVars);
 });
+/* <--------------------------------------  Post Routes  ------------------------------------------> */
 
+//Logged in users can create a short URL
 app.post("/urls", (require, response) => {
   const userID = require.session.user_id;
   const longURL = require.body.longURL;
@@ -182,23 +201,22 @@ app.post('/urls/:shortURL', (require, response) => {
 });
 
 
-
 app.post("/login", (require, response) => {
-    const email = require.body.email;
-    const password = require.body.password; // retrieve password from database object users (users[user].password)
+    const userEmail = require.body.email;
+    const userPass = require.body.password;
 
-    if (!email) {
+    if (!userEmail) {
       return response.status(403).send("The email entered is invalid");
-    } else if (getUserByEmail(email, users)) {
-      const userID = getUserByEmail(email, users);
+    } else if (getUserByEmail(userEmail, users)) {
+      const userID = getUserByEmail(userEmail, users);
       const user = users[userID]
 
-    if (!bcrypt.compareSync(password, user.password)) {
-      return response.status(403).send("The password entered is invalid");
-    } else {
-      require.session.user_id = userID;
-      response.redirect("/urls");
-    }
+      if (!bcrypt.compareSync(userPass, user.password)) {
+        return response.status(403).send("The password entered is invalid");
+      } else {
+        require.session.user_id = userID;
+        response.redirect("/urls");
+      }
     } else {
       return response.status(400).send("Invalid email")
     }
@@ -209,18 +227,6 @@ app.post("/logout", (require, response) => {
   response.redirect("/urls");
 });
 
-app.get("/register", (require, response) => {
-  const userID = require.session.user_id;
-  console.log(userID)
-  if(userID) {
-    return response.redirect("/urls")
-  }
-  const templateVars = {
-    user_id: userID,
-    users
-  }
-  response.render("urls_register", templateVars)
-});
 
 app.post("/register", (require, response) => {
 const userEmail = require.body.email;
@@ -244,9 +250,6 @@ const hashPass = bcrypt.hashSync(userPass,10)
   }
 });
 
-app.get("/hello", (require, response) => {
-  response.send("<html><body>Hello <b>World</b></body></html>\n");
-});
 
 
 app.listen(PORT, () => {

@@ -8,7 +8,7 @@ const getUserByEmail = (email, database) => {
   return undefined;
 }
 
-const urlsForUser = (id) => {
+const urlsForUser = (id, urlDatabase) => {
   const userURLs = {};
   if(!id) {
     return null;
@@ -19,6 +19,6 @@ const urlsForUser = (id) => {
       userURLs[key] = urlDatabase[key]
     }
   }
-  return userURLs
+  return userURLs;
 }
-module.exports = { getUserByEmail, urlsForUser};
+module.exports = { getUserByEmail, urlsForUser };

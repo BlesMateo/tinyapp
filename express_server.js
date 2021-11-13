@@ -4,7 +4,7 @@ const cookiesession = require("cookie-session")
 const bodyParser = require("body-parser");
 const morgan = require("morgan");
 const bcrypt = require("bcryptjs");
-const { getUserByEmail, urlsForUser } = require("./helper");
+const { getUserByEmail, urlsForUser } = require("./helpers");
 const app = express();
 const PORT = 8080; // default port 8080
 //const userid length = 6;
@@ -68,6 +68,15 @@ app.get("/", (require, response) => {
   return response.redirect("/login");
 });
 
+app.get("/u/:shortURL", (require, response) => {
+  const urlObject = urlDatabase[require.params.shortURL]
+  const longURL = urlObject ? urlObject.longURL : null //if object exists return longURL else return null
+    if(!longURL){
+    return response.status(404).send("URL cannot be found")
+  }
+  response.redirect(longURL);
+});
+
 app.get("/urls.json", (require, response) => {
   response.json(urlDatabase);
 });
@@ -77,7 +86,7 @@ app.get("/urls", (require, response) => {
   if (!userID){
     return response.status(401).send("Please <a href='/login'>login</a> first to continue")
   }
-  const shortURL = urlsForUser(userID)
+  const shortURL = urlsForUser(userID, urlDatabase)
 
   const templateVars = {
     urls: shortURL,
@@ -111,6 +120,19 @@ app.get("/urls/:shortURL", (require, response) => {
   response.render("urls_show", templateVars);
 });
 
+app.get('/login', (require, response) => {
+  const userID = require.session.user_id;
+  if(userID) {
+    response.redirect("/urls");
+
+  }
+  const templateVars = {
+    user_id: userID,
+    users
+  }
+  response.render("urls_login", templateVars);
+});
+
 app.post("/urls", (require, response) => {
   const userID = require.session.user_id;
   const longURL = require.body.longURL;
@@ -123,15 +145,6 @@ app.post("/urls", (require, response) => {
   response.redirect(`/urls/${shortURL}`);
 });
 
-app.get("/u/:shortURL", (require, response) => {
-  const urlObject = urlDatabase[require.params.shortURL]
-  const longURL = urlObject ? urlObject.longURL : null //if object exists return longURL else return null
-  console.log(longURL)
-    if(!longURL){
-    return response.status(404).send("URL cannot be found")
-  }
-  response.redirect(longURL);
-});
 
 app.post('/urls/:shortURL/delete', (require, response) => {
   const userID = require.session.user_id
@@ -139,7 +152,7 @@ app.post('/urls/:shortURL/delete', (require, response) => {
     return response.status(401).send("Please <a href='/login'>login</a> first to continue")
   }
   const shortURL = require.params.shortURL;
-  const userURLs = urlsForUser(userID)
+  const userURLs = urlsForUser(userID, urlDatabase)
     if (shortURL in userURLs){
       delete urlDatabase[shortURL];
       response.redirect("/urls");
@@ -155,7 +168,7 @@ app.post('/urls/:shortURL', (require, response) => {
   }
   const longURL = require.body.longURL;
   const shortURL = require.params.shortURL;
-  const userURLs = urlsForUser(userID)
+  const userURLs = urlsForUser(userID, urlDatabase)
 
   if (shortURL in userURLs){
     console.log(longURL)
@@ -168,18 +181,6 @@ app.post('/urls/:shortURL', (require, response) => {
   }
 });
 
-app.get('/login', (require, response) => {
-  const userID = require.session.user_id;
-  if(userID) {
-    response.redirect("/urls");
-
-  }
-  const templateVars = {
-    user_id: userID,
-    users
-  }
-  response.render("urls_login", templateVars);
-});
 
 
 app.post("/login", (require, response) => {
@@ -210,8 +211,9 @@ app.post("/logout", (require, response) => {
 
 app.get("/register", (require, response) => {
   const userID = require.session.user_id;
+  console.log(userID)
   if(userID) {
-    response.redirect("/urls")
+    return response.redirect("/urls")
   }
   const templateVars = {
     user_id: userID,
